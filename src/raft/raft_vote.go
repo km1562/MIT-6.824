@@ -1,10 +1,11 @@
 package raft
 
-import "time"
+import (
+	"time"
+)
 
 type RequestVoteArgs struct {
 	// Your data here (2A, 2B).
-
 	Term         int
 	CandidateId  int
 	LastLogIndex int
@@ -17,10 +18,11 @@ type RequestVoteReply struct {
 	VoteGranted bool
 }
 
+// example RequestVote RPC handler.
 func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+	// Your code here (2A, 2B).
 	rf.lock("req_vote")
-	deferrf.unlock("req_vote")
-
+	defer rf.unlock("req_vote")
 	defer func() {
 		rf.log("get request vote, args:%+v, reply:%+v", args, reply)
 	}()
@@ -40,8 +42,10 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 			return
 		}
 		if rf.voteFor != -1 && rf.voteFor != args.CandidateId {
+			// 已投给其他 server
 			return
 		}
+		// 还一种可能:没有投票
 	}
 
 	defer rf.persist()
@@ -52,7 +56,8 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	}
 
 	if lastLogTerm > args.LastLogTerm || (args.LastLogTerm == lastLogTerm && args.LastLogIndex < lastLogIndex) {
-		return //选取限制
+		// 选取限制
+		return
 	}
 
 	rf.term = args.Term
@@ -64,7 +69,7 @@ func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
 	return
 }
 
-func (rf *Raft) resetElectionTImer() {
+func (rf *Raft) resetElectionTimer() {
 	rf.electionTimer.Stop()
 	rf.electionTimer.Reset(randElectionTimeout())
 }
@@ -72,9 +77,9 @@ func (rf *Raft) resetElectionTImer() {
 func (rf *Raft) sendRequestVoteToPeer(server int, args *RequestVoteArgs, reply *RequestVoteReply) {
 	// 当网络出错 call 迅速返回时，会产生大量 goroutine 及 rpc
 	// 所以加了 sleep
-
+	// TODO
 	t := time.NewTimer(RPCTimeout)
-	defer t.stop()
+	defer t.Stop()
 	rpcTimer := time.NewTimer(RPCTimeout)
 	defer rpcTimer.Stop()
 
@@ -101,7 +106,6 @@ func (rf *Raft) sendRequestVoteToPeer(server int, args *RequestVoteArgs, reply *
 			if !ok {
 				continue
 			} else {
-				reply.Term = r.Term
 				reply.Term = r.Term
 				reply.VoteGranted = r.VoteGranted
 				return
@@ -132,7 +136,6 @@ func (rf *Raft) startElection() {
 	grantedCount := 1
 	chResCount := 1
 	votesCh := make(chan bool, len(rf.peers))
-
 	for index, _ := range rf.peers {
 		if index == rf.me {
 			continue
@@ -157,7 +160,6 @@ func (rf *Raft) startElection() {
 	for {
 		r := <-votesCh
 		chResCount += 1
-
 		if r == true {
 			grantedCount += 1
 		}
