@@ -26,11 +26,11 @@ import (
 	"sync/atomic"
 	"time"
 
-//	"6.824/labgob"
+	//	"6.824/labgob"
 	"6.824/labrpc"
 )
 
-func init(){
+func init() {
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 	rand.Seed(time.Now().Unix())
 }
@@ -50,6 +50,7 @@ const (
 	Candidate Role = 1
 	Leader    Role = 2
 )
+
 //
 // as each Raft peer becomes aware that successive log entries are
 // committed, the peer should send an ApplyMsg to the service (or
@@ -77,9 +78,9 @@ type ApplyMsg struct {
 // A Go object implementing a single Raft peer.
 //
 
-type logEntry struct{
-	Term 	int
-	Idx  	int
+type logEntry struct {
+	Term    int
+	Idx     int
 	Command interface{}
 }
 
@@ -96,21 +97,21 @@ type Raft struct {
 	role Role
 	term int
 
-	electionTimer 		*time.Timer
+	electionTimer       *time.Timer
 	appendEntriesTimers []*time.Timer
-	applyTimer			*time.Timer
+	applyTimer          *time.Timer
 	notifyApplyCh       chan struct{}
 	stopCh              chan struct{}
 
-	voteFor				int
-	logEntries			[]logEntry
-	applyCh				chan ApplyMsg
-	commitIndex 		int
-	lastSnapshotIndex	int
-	lastSnapshortTerm	int
-	lastApplied			int
-	nextIndex			[]int
-	matchIndex			[]int
+	voteFor           int
+	logEntries        []logEntry
+	applyCh           chan ApplyMsg
+	commitIndex       int
+	lastSnapshotIndex int
+	lastSnapshortTerm int
+	lastApplied       int
+	nextIndex         []int
+	matchIndex        []int
 
 	DebugLog  bool      // print log
 	lockStart time.Time // debug 用，找出长时间 lock
@@ -145,7 +146,6 @@ func (rf *Raft) persist() {
 	// rf.persister.SaveRaftState(data)
 }
 
-
 //
 // restore previously persisted state.
 //
@@ -168,19 +168,19 @@ func (rf *Raft) readPersist(data []byte) {
 	// }
 }
 
-func (rf *Raft) lock(m string){
+func (rf *Raft) lock(m string) {
 	rf.mu.Lock()
 	rf.lockStart = time.Now()
 	rf.lockName = m
 }
 
-func (rf *Raft) unlock(m string){
+func (rf *Raft) unlock(m string) {
 	/*
-	思路：
-	解锁，如果解锁不是同一个并且超时，就记录
+		思路：
+		解锁，如果解锁不是同一个并且超时，就记录
 
-	learn：
-	1、timr.Timer里居然有个sub函数
+		learn：
+		1、timr.Timer里居然有个sub函数
 	*/
 	rf.lockEnd = time.Now()
 	rf.lockName = ""
@@ -191,16 +191,16 @@ func (rf *Raft) unlock(m string){
 	rf.mu.Unlock()
 }
 
-func (rf *Raft) changeRole(role Role){
+func (rf *Raft) changeRole(role Role) {
 	/*
-	思路：不同的role，执行不同的功能
+		思路：不同的role，执行不同的功能
 
-	learn:
-	1、panic
-	2、make函数
+		learn:
+		1、panic
+		2、make函数
 	*/
 	rf.role = role
-	switch role{
+	switch role {
 	case Follower:
 	case Candidate:
 		rf.term += 1
@@ -209,7 +209,7 @@ func (rf *Raft) changeRole(role Role){
 	case Leader:
 		_, lastLogIndex := rf.lastLogTermIndex()
 		rf.nextIndex = make([]int, len(rf.peers))
-		for i := 0;i < len(rf.peers);i++{
+		for i := 0; i < len(rf.peers); i++ {
 			rf.nextIndex[i] = lastLogIndex + 1
 		}
 		rf.matchIndex = make([]int, len(rf.peers))
@@ -220,11 +220,12 @@ func (rf *Raft) changeRole(role Role){
 	}
 }
 
-func (rf *Raft) lastLogTermIndex() (int, int){
+func (rf *Raft) lastLogTermIndex() (int, int) {
 	term := rf.logEntries[len(rf.logEntries)-1].Term
 	index := rf.lastSnapshotIndex + len(rf.logEntries) - 1
 	return term, index
 }
+
 //
 // A service wants to switch to snapshot.  Only do so if Raft hasn't
 // have more recent info since it communicate the snapshot on applyCh.
@@ -245,29 +246,22 @@ func (rf *Raft) Snapshot(index int, snapshot []byte) {
 
 }
 
-
 //
 // example RequestVote RPC arguments structure.
 // field names must start with capital letters!
 //
-type RequestVoteArgs struct {
-	// Your data here (2A, 2B).
-}
 
 //
 // example RequestVote RPC reply structure.
 // field names must start with capital letters!
 //
-type RequestVoteReply struct {
-	// Your data here (2A).
-}
 
 //
 // example RequestVote RPC handler.
 //
-func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
-	// Your code here (2A, 2B).
-}
+//func (rf *Raft) RequestVote(args *RequestVoteArgs, reply *RequestVoteReply) {
+//	// Your code here (2A, 2B).
+//}
 
 //
 // example code to send a RequestVote RPC to a server.
@@ -303,7 +297,6 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 	return ok
 }
 
-
 //
 // the service using Raft (e.g. a k/v server) wants to start
 // agreement on the next command to be appended to Raft's log. if this
@@ -321,9 +314,9 @@ func (rf *Raft) sendRequestVote(server int, args *RequestVoteArgs, reply *Reques
 func (rf *Raft) Start(command interface{}) (int, int, bool) {
 
 	/*
-	思路：
-	判断是否是leader，如果是就重设，
-	如果不是，就直接返回
+		思路：
+		判断是否是leader，如果是就重设，
+		如果不是，就直接返回
 	*/
 	//index := -1
 	//term := -1
@@ -334,11 +327,11 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	_, lastIndex := rf.lastLogTermIndex()
 	index := lastIndex + 1
 
-	if isLeader{
+	if isLeader {
 		rf.logEntries = append(rf.logEntries, logEntry{
-			Term: rf.term,
+			Term:    rf.term,
 			Command: command,
-			Idx: index,
+			Idx:     index,
 		})
 
 		rf.matchIndex[rf.me] = index
@@ -349,7 +342,6 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	rf.unlock("start")
 	return index, term, isLeader
 	// Your code here (2B).
-
 
 	return index, term, isLeader
 }
@@ -367,11 +359,11 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 //
 func (rf *Raft) Kill() {
 	/*
-	思路
-	直接关掉
+		思路
+		直接关掉
 
-	learn:
-	1、close就可以直接实现了
+		learn:
+		1、close就可以直接实现了
 	*/
 	atomic.StoreInt32(&rf.dead, 1)
 	// Your code here, if desired.
@@ -383,12 +375,12 @@ func (rf *Raft) killed() bool {
 	return z == 1
 }
 
-func (rf *Raft) log(format string, a ...interface{}) bool{
-	if rf.DebugLog == false{
-		return false
+func (rf *Raft) log(format string, a ...interface{}) {
+	if rf.DebugLog == false {
+		return
 	}
 	term, idx := rf.lastLogTermIndex()
-	r := fmt.Sprintf(format, a)
+	r := fmt.Sprintf(format, a...)
 	s := fmt.Sprintf("gid:%d, me: %d, role:%v,term:%d, commitIdx: %v, snidx:%d, apply:%v, matchidx: %v, nextidx:%+v, lastlogterm:%d,idx:%d",
 		rf.gid, rf.me, rf.role, rf.term, rf.commitIndex, rf.lastSnapshotIndex, rf.lastApplied, rf.matchIndex, rf.nextIndex, term, idx)
 	log.Printf("%s:log:%s\n", s, r)
@@ -430,18 +422,18 @@ func (rf *Raft) getRealIdxByLogIndex(logIndex int) int {
 	}
 }
 
-
-func randElectionTimeout() time.Duration{
+func randElectionTimeout() time.Duration {
 
 	/*
-	思路：设置超时时间
+		思路：设置超时时间
 
-	learn:
-	1、time.Duration随机，然后取余数再加上去
+		learn:
+		1、time.Duration随机，然后取余数再加上去
 	*/
 	r := time.Duration(rand.Int63()) % ElectionTimeout
 	return ElectionTimeout + r
 }
+
 // The ticker go routine starts a new election if this peer hasn't received
 // heartsbeats recently.
 func (rf *Raft) ticker() {
@@ -476,9 +468,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.DebugLog = false
 
 	//gid for test
-	if len(gid) != 0{
+	if len(gid) != 0 {
 		rf.gid = gid[0]
-	}else{
+	} else {
 		rf.gid = -1
 	}
 	// Your initialization code here (2A, 2B, 2C).
@@ -501,9 +493,9 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	rf.notiyApplyCh = make(chan struct{}, 100)
 
 	//apply log
-	go func(){
+	go func() {
 		for {
-			select{
+			select {
 			case <-rf.stopCh:
 				return
 			case <-rf.applyTimer.C:
@@ -512,7 +504,7 @@ func Make(peers []*labrpc.ClientEnd, me int,
 				rf.startApplyLogs()
 			}
 		}
-	}
+	}()
 
 	// 发起投票
 	go func() {
@@ -545,7 +537,6 @@ func Make(peers []*labrpc.ClientEnd, me int,
 	}
 	// start ticker goroutine to start elections
 	//go rf.ticker()
-
 
 	return rf
 }
